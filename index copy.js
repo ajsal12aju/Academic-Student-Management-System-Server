@@ -21,7 +21,7 @@ app.use(express.urlencoded({ extended: true, limit: "5mb" }));
 Connection();
 
 app.use("/", router);
-
+console.log("yes")
 const port = process.env.PORT;
 app.listen(port, () => {
   console.log("\x1b[32m%s\x1b[0m", `Server is running on port ${port}`);
