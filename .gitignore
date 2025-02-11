@@ -1,0 +1,23 @@
+# Node modules
+node_modules/
+
+# Build output
+/build/
+/uploads/
+
+# Environment files
+.env
+
+# npm package lock file (track package-lock.json, don't ignore)
+# package-lock.json
+
+# IDE or editor directories and files
+.vscode/
+.idea/
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# React specific
+.cache/
