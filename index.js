@@ -3,6 +3,8 @@ const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const cors = require("cors");
 const helmet = require("helmet");
+const compression = require("compression");
+
 const rateLimit = require("express-rate-limit");
 const authRoutes = require("./routes/authRouter");
 
@@ -13,15 +15,16 @@ const app = express();
 
 // Middleware for security
 app.use(helmet());
+app.use(compression());
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Rate Limiting to prevent brute force attacks
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-});
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+}); 
 app.use(limiter);
 
 // Database Connection
