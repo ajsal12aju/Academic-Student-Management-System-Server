@@ -1,98 +1,169 @@
 const bcrypt = require("bcryptjs");
-const { default: mongoose } = require("mongoose");
-const { Types } = mongoose;
 const jwt = require("jsonwebtoken");
-const Branch = require("../schemas/branchSchema");
-const Admin = require("../schemas/adminUserSchema");
+const Admin = require("../models/Admin");
+const TantAdmin = require("../schemas/tantAdminSchema");
+const Institution = require("../schemas/institutionSchema");
 
-const createNewAdmin = async (req, res) => {
+
+const registerAdmin = async (req, res) => {
   try {
-    const { name, user_name, password, branch } = req.body;
+    const { name, user_name, password } = req.body;
 
-    if (!name || !user_name || !password || !branch) {
-      return res.status(400).json({ error: "required fields  are missing " });
+    if (!name || !user_name || !password) {
+      return res.status(400).json({ error: "All fields are required" });
     }
-    if (!Types.ObjectId.isValid(branch)) {
-      return res.status(400).json({ error: "Invalid branch" });
-    }
-    const branchExists = await Branch.findById(branch);
-    if (!branchExists) {
-      return res.status(400).json({ error: "Branch does not exist" });
-    }
+
     const existingUser = await Admin.findOne({ user_name });
     if (existingUser) {
-      return res
-        .status(400)
-        .json({ error: `user with '${user_name}' is already exist` });
+      return res.status(400).json({ error: "User already exists" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
-
-    const newAdmin = new Admin({
-      name,
-      user_name,
-      password: hashedPassword,
-      branch: branch,
-    });
-
+    const newAdmin = new Admin({ name, user_name, password: hashedPassword });
     await newAdmin.save();
-    return res
-      .status(201)
-      .json({ message: "admin user created", user: newAdmin });
-  } catch (error) {
-    console.error("======X========X=======X========X========X=========", error);
-    return res.status(500).json({ error: "internal server error" });
+
+    res.status(201).json({ message: "Admin registered successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Internal server error" });
   }
 };
 
-const signin = async (req, res) => {
-  const secretKey = process.env.JWT_SECRET;
-
+const login = async (req, res) => {
   try {
-    const user_name = req.body.email;
-    const password = req.body.password;
-    if (!user_name || !password) {
-      return res
-        .status(400)
-        .json({ error: "User name and password are required" });
+    const { user_name, password } = req.body;
+
+    const user = await Admin.findOne({ user_name });
+    if (!user) return res.status(401).json({ error: "Invalid credentials" });
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(401).json({ error: "Invalid credentials" });
+
+    const token = jwt.sign(
+      { user_id: user._id, user_name: user.user_name },
+      process.env.JWT_SECRET,
+      { expiresIn: "2h" }
+    );
+
+    res.status(200).json({ message: "Login successful", token });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+const registerTantAdmin = async (req, res) => {
+  try {
+    const { name, user_name, email, password, institution_name, address, contact_email, contact_number } = req.body;
+
+    if (!name || !user_name || !email || !password || !institution_name || !address || !contact_email || !contact_number) {
+      return res.status(400).json({ error: "All fields are required" });
     }
 
-    const user = await Admin.findOne({ user_name }).populate("branch");
+    // Check if TantAdmin already exists
+    const existingUser = await TantAdmin.findOne({ user_name });
+    if (existingUser) {
+      return res.status(400).json({ error: "User already exists" });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    // Create Institution
+    const newInstitution = new Institution({
+      name: institution_name,
+      address,
+      contact_email,
+      contact_number,
+    });
+
+    await newInstitution.save();
+
+    // Create TantAdmin
+    const newTantAdmin = new TantAdmin({
+      name,
+      user_name,
+      email,
+      password: hashedPassword,
+      institution: newInstitution._id,
+    });
+
+    await newTantAdmin.save();
+
+    // Link Institution to TantAdmin
+    newInstitution.tantAdmin = newTantAdmin._id;
+    await newInstitution.save();
+
+    return res.status(201).json({
+      message: "TantAdmin registered successfully",
+      tantAdmin: newTantAdmin,
+      institution: newInstitution,
+    });
+  } catch (error) {
+    console.error("Registration Error:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// 📌 TantAdmin Login
+const loginTantAdmin = async (req, res) => {
+  try {
+    const { user_name, password } = req.body;
+
+    if (!user_name || !password) {
+      return res.status(400).json({ error: "User name and password are required" });
+    }
+
+    const user = await TantAdmin.findOne({ user_name }).populate("institution");
 
     if (!user) {
-      return res.status(401).json({ error: "Invalid user name or password" });
+      return res.status(401).json({ error: "Invalid credentials" });
     }
 
     const isPasswordCorrect = await bcrypt.compare(password, user.password);
     if (!isPasswordCorrect) {
-      return res.status(401).json({ error: "Invalid user name or password" });
+      return res.status(401).json({ error: "Invalid credentials" });
     }
+
     const token = jwt.sign(
-      {
-        branch: user.branch._id,
-        user_id: user._id,
-        user_name: user.user_name,
-        name: user.name,
-      },
-      secretKey,
-      {
-        expiresIn: "2hr",
-      }
+      { user_id: user._id, role: "tantAdmin", institution: user.institution._id },
+      process.env.JWT_SECRET,
+      { expiresIn: "2h" }
     );
 
     return res.status(200).json({
       message: "Login successful",
       token,
-      user: user.name,
-      branch: {
-        branch_name: user.branch.branch_name,
-        branch_id: user.branch.branch_id,
-      },
+      user: { name: user.name, role: user.role, institution: user.institution.name },
     });
   } catch (error) {
-    console.error("Error during login:", error);
+    console.error("Login Error:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
 };
 
-module.exports = { createNewAdmin, signin };
+const refreshToken = async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+    if (!refreshToken) return res.status(401).json({ error: "Refresh token required" });
+
+    // Verify refresh token
+    jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, (err, user) => {
+      if (err) return res.status(403).json({ error: "Invalid refresh token" });
+
+      // Issue new access token
+      const newAccessToken = jwt.sign(
+        { user_id: user.user_id }, 
+        process.env.JWT_SECRET, 
+        { expiresIn: "2h" } // Shorter expiration
+      );
+
+      res.status(200).json({ accessToken: newAccessToken });
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+
+module.exports = { registerAdmin, login, refreshToken , registerTantAdmin, loginTantAdmin };
