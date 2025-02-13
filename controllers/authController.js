@@ -1,4 +1,4 @@
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const { default: mongoose } = require("mongoose");
 const { Types } = mongoose;
 const jwt = require("jsonwebtoken");
