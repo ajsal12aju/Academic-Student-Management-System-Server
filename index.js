@@ -13,7 +13,6 @@ dotenv.config();
 
 const app = express();
 
-// Middleware for security
 app.use(helmet());
 app.use(compression());
 app.use(cors());
