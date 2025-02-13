@@ -1,8 +1,8 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const Admin = require("../models/Admin");
-const TantAdmin = require("../schemas/tantAdminSchema");
-const Institution = require("../schemas/institutionSchema");
+const Admin = require("../modals/platformAdmin");
+const TantAdmin = require("../modals/tantAdmin");
+const Institution = require("../modals/institution");
 
 
 const registerAdmin = async (req, res) => {
