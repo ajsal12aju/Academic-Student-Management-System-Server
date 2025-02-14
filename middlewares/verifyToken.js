@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken");
 
 const authenticate = (req, res, next) => {
-  const token = req.header("Authorization")?.replace("Bearer ", "");
+  const token = req.cookies?.jwt; // Get token from cookies
 
   if (!token) {
     return res.status(401).json({ error: "Access denied, token missing" });
@@ -16,6 +16,12 @@ const authenticate = (req, res, next) => {
   }
 };
 
+const logout = (req, res) => {
+  res.clearCookie("jwt", { httpOnly: true, secure: true, sameSite: "Strict" });
+  res.status(200).json({ message: "Logged out successfully" });
+};
+
+
 const verifyRole = (roles) => {
   return (req, res, next) => {
     if (!roles.includes(req.user.role)) {
@@ -25,4 +31,4 @@ const verifyRole = (roles) => {
   };
 };
 
-module.exports = { authenticate, verifyRole };
+module.exports = { authenticate, verifyRole,logout };
