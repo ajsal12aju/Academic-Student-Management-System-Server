@@ -1,8 +1,7 @@
 const jwt = require("jsonwebtoken");
 
-// ✅ Single function for token verification
 const authenticate = (req, res, next) => {
-  const token = req.header("Authorization")?.replace("Bearer ", ""); // More reliable extraction
+  const token = req.header("Authorization")?.replace("Bearer ", "");
 
   if (!token) {
     return res.status(401).json({ error: "Access denied, token missing" });
