@@ -9,3 +9,4 @@ const academicAdminSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 module.exports = mongoose.model("AcademicAdmin", academicAdminSchema);
+

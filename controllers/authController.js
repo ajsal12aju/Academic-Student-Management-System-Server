@@ -1,7 +1,7 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const Admin = require("../modals/platformAdmin");
-const TantAdmin = require("../modals/tantAdmin");
+const User = require("../modals/user");
 const Institution = require("../modals/institution");
 const AcademicAdmin = require("../modals/accadamicAdmin");
 
@@ -26,7 +26,7 @@ const registerAdmin = async (req, res) => {
     res.status(201).json({ message: "Admin registered successfully" });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: err , message:"Field" });
   }
 };
 
@@ -63,13 +63,13 @@ const login = async (req, res) => {
 
 const registerTantAdmin = async (req, res) => {
   try {
-    const { name, user_name, email, password, institution_name, address, contact_email, contact_number } = req.body;
+    const { name, user_name, email, password, institution_name, address, contact_number } = req.body;
 
-    if (!name || !user_name || !email || !password || !institution_name || !address || !contact_email || !contact_number) {
+    if (!name || !user_name || !email || !password || !institution_name || !address || !contact_number) {
       return res.status(400).json({ error: "All fields are required" });
     }
 
-    const existingUser = await TantAdmin.findOne({ user_name });
+    const existingUser = await User.findOne({ user_name });
     if (existingUser) {
       return res.status(400).json({ error: "User already exists" });
     }
@@ -79,19 +79,22 @@ const registerTantAdmin = async (req, res) => {
     const newInstitution = new Institution({
       name: institution_name,
       address,
-      contact_email,
+      email,
       contact_number,
     });
+    
 
     await newInstitution.save();
 
-    const newTantAdmin = new TantAdmin({
+    const newTantAdmin = new User({
       name,
       user_name,
       email,
       password: hashedPassword,
-      institution: newInstitution._id,
+      institution_name: newInstitution._id,
+      role: "tantAdmin",
     });
+    
 
     await newTantAdmin.save();
 
@@ -99,17 +102,17 @@ const registerTantAdmin = async (req, res) => {
     await newInstitution.save();
 
     return res.status(201).json({
-      message: "TantAdmin registered successfully",
+      message: "User registered successfully",
       tantAdmin: newTantAdmin,
       institution: newInstitution,
     });
-  } catch (error) {
+  } catch (error) { 
     console.error("Registration Error:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
 };
 
-// TantAdmin Login
+// User Login
 const loginTantAdmin = async (req, res) => {
   try {
     const { user_name, password } = req.body;
@@ -118,7 +121,7 @@ const loginTantAdmin = async (req, res) => {
       return res.status(400).json({ error: "User name and password are required" });
     }
 
-    const user = await TantAdmin.findOne({ user_name }).populate("institution");
+    const user = await User.findOne({ user_name }).populate("institution");
     if (!user) return res.status(401).json({ error: "Invalid credentials" });
 
     const isPasswordCorrect = await bcrypt.compare(password, user.password);
@@ -169,9 +172,9 @@ const refreshToken = async (req, res) => {
 
 const registerAcademicAdmin = async (req, res) => {
   try {
-    const { name, user_name, email, password, institution_name, address, contact_email, contact_number } = req.body;
+    const { name, user_name, email, password, institution_name, address, contact_number } = req.body;
 
-    if (!name || !user_name || !email || !password || !institution_name || !address || !contact_email || !contact_number) {
+    if (!name || !user_name || !email || !password || !institution_name || !address || !contact_number) {
       return res.status(400).json({ error: "All fields are required" });
     }
 
@@ -184,7 +187,7 @@ const registerAcademicAdmin = async (req, res) => {
 
     const institution = await Institution.findOneAndUpdate(
       { name: institution_name },
-      { name: institution_name, address, contact_email, contact_number },
+      { name: institution_name, address, contact_number },
       { upsert: true, new: true }
     );
 
