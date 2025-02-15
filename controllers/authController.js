@@ -32,16 +32,17 @@ const registerAdmin = async (req, res) => {
 
 const login = async (req, res) => {
   try {
-    const { user_name, password } = req.body;
+    const { email, password } = req.body;
 
-    const user = await Admin.findOne({ user_name });
+    // Fix: Use email instead of user_name
+    const user = await Admin.findOne({ email });
     if (!user) return res.status(401).json({ error: "Invalid credentials" });
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(401).json({ error: "Invalid credentials" });
 
     const token = jwt.sign(
-      { user_id: user._id, user_name: user.user_name },
+      { user_id: user._id, email: user.email },
       process.env.JWT_SECRET,
       { expiresIn: "2h" }
     );
@@ -53,7 +54,7 @@ const login = async (req, res) => {
       maxAge: 2 * 60 * 60 * 1000, 
     });
 
-    res.status(200).json({ message: "Login successful" });
+    res.status(200).json({ message: "Login successful", token, user });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Internal server error" });
@@ -121,14 +122,14 @@ const loginTantAdmin = async (req, res) => {
       return res.status(400).json({ error: "User name and password are required" });
     }
 
-    const user = await User.findOne({ user_name }).populate("institution");
+    const user = await User.findOne({ user_name }).populate("institution_name");
     if (!user) return res.status(401).json({ error: "Invalid credentials" });
-
+console.log(user)
     const isPasswordCorrect = await bcrypt.compare(password, user.password);
     if (!isPasswordCorrect) return res.status(401).json({ error: "Invalid credentials" });
 
     const token = jwt.sign(
-      { user_id: user._id, role: "tantAdmin", institution: user.institution._id },
+      { user_id: user._id, role: "tantAdmin", institution: user.institution_name._id },
       process.env.JWT_SECRET,
       { expiresIn: "2h" }
     );
@@ -140,7 +141,26 @@ const loginTantAdmin = async (req, res) => {
       maxAge: 2 * 60 * 60 * 1000, 
     });
 
-    return res.status(200).json({ message: "Login successful" });
+    return res.status(200).json({
+      message: "Login successful",
+      token,
+      user: {
+        _id: user._id,
+        name: user.name,
+        user_name: user.user_name,
+        email: user.email,
+        role: user.role,
+        institution: user.institution_name
+          ? {
+              _id: user.institution_name._id,
+              name: user.institution_name.name,
+              address: user.institution_name.address,
+              contact_number: user.institution_name.contact_number,
+            }
+          : null, // Handle cases where institution might not exist
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      }})
   } catch (error) {
     console.error("Login Error:", error);
     return res.status(500).json({ error: "Internal server error" });
@@ -230,7 +250,6 @@ const loginAcademicAdmin = async (req, res) => {
       { expiresIn: "2h" }
     );
 
-    // Set token in httpOnly cookie
     res.cookie("jwt", token, {
       httpOnly: true,
       secure: true,
