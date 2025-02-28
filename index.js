@@ -8,7 +8,6 @@ const compression = require("compression");
 const rateLimit = require("express-rate-limit");
 const authRoutes = require("./routes/authRouter");
 
-// Load environment variables
 dotenv.config();
 
 const app = express();
