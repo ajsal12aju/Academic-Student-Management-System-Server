@@ -1,7 +1,9 @@
 const jwt = require("jsonwebtoken");
 
 const authenticate = (req, res, next) => {
+  console.log(req.cookies)
   const token = req.cookies?.jwt; // Get token from cookies
+  console.log(token)
 
   if (!token) {
     return res.status(401).json({ error: "Access denied, token missing" });
@@ -24,6 +26,9 @@ const logout = (req, res) => {
 
 const verifyRole = (roles) => {
   return (req, res, next) => {
+    console.log(roles)
+    console.log(req.user)
+
     if (!roles.includes(req.user.role)) {
       return res.status(403).json({ error: "Unauthorized access" });
     }

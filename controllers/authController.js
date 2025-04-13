@@ -346,7 +346,7 @@
 // module.exports = { registerAdmin, login,logout, refreshToken , registerTantAdmin, loginTantAdmin,registerAcademicAdmin,loginAcademicAdmin };
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const User = require("../modals/user"); // Single User model handling all roles
+const User = require("../modals/user");
 const Institution = require("../modals/institution");
 
 const registerUser = async (req, res) => {
